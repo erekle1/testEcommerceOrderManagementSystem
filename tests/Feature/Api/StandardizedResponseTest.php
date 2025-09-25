@@ -117,7 +117,6 @@ class StandardizedResponseTest extends TestCase
             ->assertJsonStructure([
                 'success',
                 'message',
-                'errors',
                 'meta' => ['timestamp', 'version'],
             ])
             ->assertJson([

@@ -43,13 +43,12 @@ class CategoryController extends BaseApiController
      */
     public function show(string $id): JsonResponse
     {
-        return $this->handleExceptions(function () use ($id) {
-            $category = Category::withCount('products')->findOrFail($id);
-            return $this->resourceResponse(
-                CategoryResource::make($category),
-                'Category retrieved successfully'
-            );
-        }, 'Failed to retrieve category');
+        $category = Category::withCount('products')->findOrFail($id);
+        
+        return $this->resourceResponse(
+            CategoryResource::make($category),
+            'Category retrieved successfully'
+        );
     }
 
     /**
@@ -57,15 +56,13 @@ class CategoryController extends BaseApiController
      */
     public function update(UpdateCategoryRequest $request, string $id): JsonResponse
     {
-        return $this->handleExceptions(function () use ($request, $id) {
-            $category = Category::findOrFail($id);
-            $category->update($request->validated());
+        $category = Category::findOrFail($id);
+        $category->update($request->validated());
 
-            return $this->resourceResponse(
-                CategoryResource::make($category->load('products')),
-                'Category updated successfully'
-            );
-        }, 'Failed to update category');
+        return $this->resourceResponse(
+            CategoryResource::make($category->load('products')),
+            'Category updated successfully'
+        );
     }
 
     /**
@@ -73,14 +70,12 @@ class CategoryController extends BaseApiController
      */
     public function destroy(string $id): JsonResponse
     {
-        return $this->handleExceptions(function () use ($id) {
-            $category = Category::findOrFail($id);
-            $category->delete();
+        $category = Category::findOrFail($id);
+        $category->delete();
 
-            return $this->successResponse(
-                null,
-                'Category deleted successfully'
-            );
-        }, 'Failed to delete category');
+        return $this->successResponse(
+            null,
+            'Category deleted successfully'
+        );
     }
 }
