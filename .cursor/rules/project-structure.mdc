@@ -1,0 +1,67 @@
+---
+alwaysApply: true
+---
+
+# Ecommerce Order Management System - Project Structure
+
+This is a Laravel 12 application with Tailwind CSS 4 and Vite for frontend assets.
+
+## Core Architecture
+
+- **Backend**: Laravel 12 (PHP 8.2+) with Eloquent ORM
+- **Frontend**: Tailwind CSS 4 + Vite for asset bundling
+- **Database**: MySQL with migration support
+- **Testing**: Pest framework with Laravel testing features
+- **Code Formatting**: Prettier for consistent code style
+- **Standards**: PSR-12 coding standards with Laravel Pint
+
+## Directory Structure
+
+### Backend Structure
+- [app/](mdc:app/) - Core application logic
+  - [app/Models/](mdc:app/Models/) - Eloquent models
+  - [app/Http/Controllers/](mdc:app/Http/Controllers/) - HTTP controllers
+  - [app/Http/Middleware/](mdc:app/Http/Middleware/) - Custom middleware
+  - [app/Providers/](mdc:app/Providers/) - Service providers
+- [routes/](mdc:routes/) - Route definitions
+  - [routes/web.php](mdc:routes/web.php) - Web routes
+  - [routes/api.php](mdc:routes/api.php) - API routes (create if needed)
+  - [routes/console.php](mdc:routes/console.php) - Console commands
+- [database/](mdc:database/) - Database related files
+  - [database/migrations/](mdc:database/migrations/) - Database migrations
+  - [database/seeders/](mdc:database/seeders/) - Database seeders
+  - [database/factories/](mdc:database/factories/) - Model factories
+
+### Frontend Structure
+- [resources/](mdc:resources/) - Frontend assets
+  - [resources/views/](mdc:resources/views/) - Blade templates
+  - [resources/js/](mdc:resources/js/) - JavaScript files
+  - [resources/css/](mdc:resources/css/) - CSS files
+- [public/](mdc:public/) - Public assets and entry point
+
+### Configuration
+- [config/](mdc:config/) - Application configuration
+- [vite.config.js](mdc:vite.config.js) - Vite configuration
+- [composer.json](mdc:composer.json) - PHP dependencies
+- [package.json](mdc:package.json) - Node.js dependencies
+
+## Key Files
+- [artisan](mdc:artisan) - Laravel command-line interface
+- [.env](mdc:.env) - Environment configuration
+- [phpunit.xml](mdc:phpunit.xml) - Testing configuration
+
+## Development Workflow
+- Use `composer run dev` to start development server with hot reload
+- Use `php artisan` commands for Laravel operations
+- Use `npm run dev` for frontend development
+- Use `php artisan test` for running tests with Pest
+- Use `./vendor/bin/pint` for PHP code formatting
+- Use `npm run format` for frontend code formatting with Prettier
+
+## Code Quality Standards
+- **Indentation**: 4 spaces for all files
+- **Line Length**: Maximum 120 characters
+- **Naming**: PascalCase for classes, camelCase for methods/variables
+- **Redundancy**: Eliminate code duplication through refactoring
+- **Completeness**: All features must be fully implemented and tested
+- **Documentation**: PHPDoc for all methods and classes

@@ -1,0 +1,422 @@
+---
+description: Ecommerce order management business logic and domain-specific patterns
+---
+
+# Ecommerce Order Management - Business Logic & Domain Patterns
+
+## Order Lifecycle Management
+
+### Order States & Transitions
+```php
+// Order status enum
+enum OrderStatus: string
+{
+    case PENDING = 'pending';
+    case PROCESSING = 'processing';
+    case SHIPPED = 'shipped';
+    case DELIVERED = 'delivered';
+    case CANCELLED = 'cancelled';
+    case REFUNDED = 'refunded';
+}
+
+// Order state machine
+class OrderStateMachine
+{
+    private static array $transitions = [
+        OrderStatus::PENDING->value => [OrderStatus::PROCESSING, OrderStatus::CANCELLED],
+        OrderStatus::PROCESSING->value => [OrderStatus::SHIPPED, OrderStatus::CANCELLED],
+        OrderStatus::SHIPPED->value => [OrderStatus::DELIVERED],
+        OrderStatus::DELIVERED->value => [OrderStatus::REFUNDED],
+    ];
+
+    public static function canTransition(string $from, string $to): bool
+    {
+        return in_array($to, self::$transitions[$from] ?? []);
+    }
+}
+```
+
+### Order Processing Workflow
+```php
+class OrderProcessor
+{
+    public function processOrder(Order $order): void
+    {
+        DB::transaction(function () use ($order) {
+            // 1. Validate inventory
+            $this->validateInventory($order);
+            
+            // 2. Reserve stock
+            $this->reserveStock($order);
+            
+            // 3. Process payment
+            $this->processPayment($order);
+            
+            // 4. Update order status
+            $order->update(['status' => OrderStatus::PROCESSING->value]);
+            
+            // 5. Send confirmation email
+            $this->sendOrderConfirmation($order);
+            
+            // 6. Queue fulfillment
+            dispatch(new ProcessOrderFulfillment($order));
+        });
+    }
+
+    private function validateInventory(Order $order): void
+    {
+        foreach ($order->orderItems as $item) {
+            if ($item->product->stock_quantity < $item->quantity) {
+                throw new InsufficientStockException(
+                    "Insufficient stock for product: {$item->product->name}"
+                );
+            }
+        }
+    }
+
+    private function reserveStock(Order $order): void
+    {
+        foreach ($order->orderItems as $item) {
+            $item->product->decrement('stock_quantity', $item->quantity);
+        }
+    }
+}
+```
+
+## Inventory Management
+
+### Stock Tracking
+```php
+class InventoryService
+{
+    public function adjustStock(Product $product, int $quantity, string $reason): void
+    {
+        DB::transaction(function () use ($product, $quantity, $reason) {
+            $product->increment('stock_quantity', $quantity);
+            
+            // Log stock movement
+            StockMovement::create([
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'reason' => $reason,
+                'previous_stock' => $product->stock_quantity - $quantity,
+                'new_stock' => $product->stock_quantity,
+            ]);
+            
+            // Check low stock alerts
+            $this->checkLowStockAlert($product);
+        });
+    }
+
+    private function checkLowStockAlert(Product $product): void
+    {
+        if ($product->stock_quantity <= $product->min_stock_level) {
+            dispatch(new LowStockAlert($product));
+        }
+    }
+}
+```
+
+### Product Availability
+```php
+class ProductAvailabilityService
+{
+    public function isProductAvailable(Product $product, int $quantity): bool
+    {
+        return $product->is_active 
+            && $product->stock_quantity >= $quantity
+            && $this->isProductInSeason($product);
+    }
+
+    public function getAvailableQuantity(Product $product): int
+    {
+        if (!$product->is_active) {
+            return 0;
+        }
+
+        return max(0, $product->stock_quantity);
+    }
+
+    private function isProductInSeason(Product $product): bool
+    {
+        // Implement seasonal availability logic
+        return true; // Simplified for example
+    }
+}
+```
+
+## Pricing & Calculations
+
+### Order Pricing Engine
+```php
+class PricingEngine
+{
+    public function calculateOrderTotal(Order $order): OrderTotal
+    {
+        $subtotal = $this->calculateSubtotal($order);
+        $tax = $this->calculateTax($subtotal, $order->customer);
+        $shipping = $this->calculateShipping($order);
+        $discount = $this->calculateDiscount($order);
+        
+        $total = $subtotal + $tax + $shipping - $discount;
+
+        return new OrderTotal(
+            subtotal: $subtotal,
+            tax: $tax,
+            shipping: $shipping,
+            discount: $discount,
+            total: $total
+        );
+    }
+
+    private function calculateSubtotal(Order $order): float
+    {
+        return $order->orderItems->sum(function ($item) {
+            return $item->quantity * $item->unit_price;
+        });
+    }
+
+    private function calculateTax(float $subtotal, Customer $customer): float
+    {
+        $taxRate = $this->getTaxRate($customer);
+        return $subtotal * ($taxRate / 100);
+    }
+
+    private function calculateShipping(Order $order): float
+    {
+        $shippingService = app(ShippingCalculator::class);
+        return $shippingService->calculate($order);
+    }
+}
+```
+
+### Discount System
+```php
+class DiscountService
+{
+    public function applyDiscounts(Order $order): float
+    {
+        $totalDiscount = 0;
+        
+        // Apply percentage discounts
+        $totalDiscount += $this->applyPercentageDiscounts($order);
+        
+        // Apply fixed amount discounts
+        $totalDiscount += $this->applyFixedDiscounts($order);
+        
+        // Apply coupon discounts
+        $totalDiscount += $this->applyCouponDiscounts($order);
+        
+        return min($totalDiscount, $order->subtotal); // Don't exceed subtotal
+    }
+
+    private function applyPercentageDiscounts(Order $order): float
+    {
+        $discounts = Discount::where('type', 'percentage')
+            ->where('is_active', true)
+            ->where('min_order_amount', '<=', $order->subtotal)
+            ->get();
+
+        $totalDiscount = 0;
+        foreach ($discounts as $discount) {
+            $totalDiscount += $order->subtotal * ($discount->value / 100);
+        }
+
+        return $totalDiscount;
+    }
+}
+```
+
+## Customer Management
+
+### Customer Segmentation
+```php
+class CustomerSegmentationService
+{
+    public function getCustomerSegment(Customer $customer): string
+    {
+        $totalSpent = $customer->orders()->sum('total_amount');
+        $orderCount = $customer->orders()->count();
+        
+        if ($totalSpent >= 1000 && $orderCount >= 5) {
+            return 'premium';
+        } elseif ($totalSpent >= 500 || $orderCount >= 3) {
+            return 'regular';
+        } else {
+            return 'new';
+        }
+    }
+
+    public function getCustomerDiscountRate(Customer $customer): float
+    {
+        return match ($this->getCustomerSegment($customer)) {
+            'premium' => 15.0,
+            'regular' => 5.0,
+            'new' => 0.0,
+        };
+    }
+}
+```
+
+## Order Fulfillment
+
+### Shipping & Tracking
+```php
+class ShippingService
+{
+    public function createShipment(Order $order): Shipment
+    {
+        $shipment = Shipment::create([
+            'order_id' => $order->id,
+            'carrier' => $this->selectCarrier($order),
+            'tracking_number' => $this->generateTrackingNumber(),
+            'status' => 'pending',
+        ]);
+
+        // Update order status
+        $order->update([
+            'status' => OrderStatus::SHIPPED->value,
+            'shipped_at' => now(),
+        ]);
+
+        // Send tracking email
+        dispatch(new SendTrackingEmail($shipment));
+
+        return $shipment;
+    }
+
+    private function selectCarrier(Order $order): string
+    {
+        // Implement carrier selection logic based on:
+        // - Order weight and dimensions
+        // - Delivery address
+        // - Customer preferences
+        // - Cost optimization
+        
+        return 'ups'; // Simplified
+    }
+}
+```
+
+## Reporting & Analytics
+
+### Order Analytics
+```php
+class OrderAnalyticsService
+{
+    public function getOrderMetrics(Carbon $startDate, Carbon $endDate): array
+    {
+        return [
+            'total_orders' => Order::whereBetween('created_at', [$startDate, $endDate])->count(),
+            'total_revenue' => Order::whereBetween('created_at', [$startDate, $endDate])->sum('total_amount'),
+            'average_order_value' => Order::whereBetween('created_at', [$startDate, $endDate])->avg('total_amount'),
+            'orders_by_status' => Order::whereBetween('created_at', [$startDate, $endDate])
+                ->groupBy('status')
+                ->selectRaw('status, count(*) as count')
+                ->pluck('count', 'status'),
+        ];
+    }
+
+    public function getTopSellingProducts(int $limit = 10): Collection
+    {
+        return OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('orders.status', '!=', OrderStatus::CANCELLED->value)
+            ->selectRaw('order_items.product_id, sum(order_items.quantity) as total_sold')
+            ->groupBy('order_items.product_id')
+            ->orderByDesc('total_sold')
+            ->limit($limit)
+            ->with('product')
+            ->get();
+    }
+}
+```
+
+## Error Handling & Business Rules
+
+### Custom Exceptions
+```php
+class InsufficientStockException extends Exception
+{
+    public function __construct(string $productName, int $requested, int $available)
+    {
+        parent::__construct(
+            "Insufficient stock for {$productName}. Requested: {$requested}, Available: {$available}"
+        );
+    }
+}
+
+class InvalidOrderTransitionException extends Exception
+{
+    public function __construct(string $from, string $to)
+    {
+        parent::__construct("Cannot transition order from {$from} to {$to}");
+    }
+}
+```
+
+### Business Rule Validation
+```php
+class OrderValidator
+{
+    public function validateOrderCreation(array $data): void
+    {
+        $this->validateCustomerExists($data['customer_id']);
+        $this->validateItemsNotEmpty($data['items']);
+        $this->validateProductAvailability($data['items']);
+        $this->validateMinimumOrderAmount($data['items']);
+    }
+
+    private function validateMinimumOrderAmount(array $items): void
+    {
+        $subtotal = collect($items)->sum(function ($item) {
+            return $item['quantity'] * $item['price'];
+        });
+
+        if ($subtotal < config('orders.minimum_amount', 10.00)) {
+            throw new ValidationException('Order amount must be at least $10.00');
+        }
+    }
+}
+```
+
+## Event-Driven Architecture
+
+### Order Events
+```php
+// Order events for decoupled processing
+class OrderCreated
+{
+    public function __construct(public Order $order) {}
+}
+
+class OrderStatusChanged
+{
+    public function __construct(
+        public Order $order,
+        public string $oldStatus,
+        public string $newStatus
+    ) {}
+}
+
+// Event listeners
+class SendOrderConfirmationEmail
+{
+    public function handle(OrderCreated $event): void
+    {
+        Mail::to($event->order->customer->email)
+            ->send(new OrderConfirmationMail($event->order));
+    }
+}
+
+class UpdateInventoryOnOrderCancellation
+{
+    public function handle(OrderStatusChanged $event): void
+    {
+        if ($event->newStatus === OrderStatus::CANCELLED->value) {
+            foreach ($event->order->orderItems as $item) {
+                $item->product->increment('stock_quantity', $item->quantity);
+            }
+        }
+    }
+}
+```

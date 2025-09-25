@@ -1,0 +1,324 @@
+---
+globs: tests/**/*.php
+---
+
+# Testing Conventions & Best Practices
+
+### Laravel 12 Testing Features
+- **Testing Framework**: Use Pest for testing
+- **PHPUnit**: PHPUnit 11.5+ with enhanced features
+- **Laravel Pail**: For log monitoring during tests
+- **Parallel Testing**: Improved parallel testing support
+- **Database Testing**: Enhanced database testing with RefreshDatabase trait
+- **HTTP Testing**: Built-in HTTP testing with improved assertions
+
+## Testing Structure
+
+### Test Organization & Naming
+- **Unit Tests**: Test individual classes and methods
+- **Feature Tests**: Test complete user workflows
+- **Integration Tests**: Test component interactions
+- **Test Naming**: Use descriptive names for test methods
+- **Test Coverage**: Ensure high test coverage for critical parts of the application
+- **Test Organization**: Organize tests into appropriate directories
+
+### Test Naming Convention
+```php
+// Good test method names
+public function test_can_create_order_with_valid_data()
+public function test_cannot_create_order_without_customer()
+public function test_order_total_is_calculated_correctly()
+public function test_can_update_order_status_to_shipped()
+```
+
+## Unit Testing
+
+### Model Testing with Pest
+```php
+<?php
+
+use App\Models\Order;
+use App\Models\Customer;
+use App\Models\OrderItem;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+it('can calculate total amount', function () {
+    $customer = Customer::factory()->create();
+    $order = Order::factory()->create(['customer_id' => $customer->id]);
+    
+    OrderItem::factory()->create([
+        'order_id' => $order->id,
+        'quantity' => 2,
+        'unit_price' => 10.00,
+        'subtotal' => 20.00,
+    ]);
+    
+    OrderItem::factory()->create([
+        'order_id' => $order->id,
+        'quantity' => 1,
+        'unit_price' => 15.00,
+        'subtotal' => 15.00,
+    ]);
+
+    expect($order->calculateTotal())->toBe(35.00);
+});
+
+it('belongs to customer', function () {
+    $customer = Customer::factory()->create();
+    $order = Order::factory()->create(['customer_id' => $customer->id]);
+
+    expect($order->customer)->toBeInstanceOf(Customer::class);
+    expect($order->customer->id)->toBe($customer->id);
+});
+
+it('has many order items', function () {
+    $order = Order::factory()->create();
+    $orderItems = OrderItem::factory()->count(3)->create(['order_id' => $order->id]);
+
+    expect($order->orderItems)->toHaveCount(3);
+    expect($order->orderItems->first())->toBeInstanceOf(OrderItem::class);
+});
+```
+
+### Service Testing with Pest
+```php
+<?php
+
+use App\Services\OrderService;
+use App\Models\Order;
+use App\Models\Customer;
+use App\Models\Product;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->orderService = new OrderService();
+});
+
+it('can create order with items', function () {
+    $customer = Customer::factory()->create();
+    $product = Product::factory()->create(['price' => 25.00]);
+
+    $orderData = [
+        'customer_id' => $customer->id,
+        'items' => [
+            [
+                'product_id' => $product->id,
+                'quantity' => 2,
+                'price' => 25.00,
+            ],
+        ],
+    ];
+
+    $order = $this->orderService->createOrder($orderData);
+
+    expect($order)->toBeInstanceOf(Order::class);
+    expect($order->customer_id)->toBe($customer->id);
+    expect($order->total_amount)->toBe(50.00);
+    expect($order->orderItems)->toHaveCount(1);
+});
+
+it('cannot create order with insufficient stock', function () {
+    $customer = Customer::factory()->create();
+    $product = Product::factory()->create(['stock_quantity' => 1]);
+
+    $orderData = [
+        'customer_id' => $customer->id,
+        'items' => [
+            [
+                'product_id' => $product->id,
+                'quantity' => 5, // More than available stock
+                'price' => $product->price,
+            ],
+        ],
+    ];
+
+    expect(fn() => $this->orderService->createOrder($orderData))
+        ->toThrow(\App\Exceptions\InsufficientStockException::class);
+});
+```
+
+## Feature Testing
+
+### Controller Testing with Pest
+```php
+<?php
+
+use App\Models\Order;
+use App\Models\Customer;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+it('can view orders index', function () {
+    $user = User::factory()->create();
+    $orders = Order::factory()->count(5)->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('orders.index'));
+
+    $response->assertStatus(200);
+    $response->assertViewIs('orders.index');
+    $response->assertViewHas('orders');
+});
+
+it('can create order via form', function () {
+    $user = User::factory()->create();
+    $customer = Customer::factory()->create();
+
+    $orderData = [
+        'customer_id' => $customer->id,
+        'items' => [
+            [
+                'product_id' => 1,
+                'quantity' => 2,
+                'price' => 25.00,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($user)
+        ->post(route('orders.store'), $orderData);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+    
+    $this->assertDatabaseHas('orders', [
+        'customer_id' => $customer->id,
+    ]);
+});
+
+it('cannot create order without authentication', function () {
+    $orderData = [
+        'customer_id' => 1,
+        'items' => [],
+    ];
+
+    $response = $this->post(route('orders.store'), $orderData);
+
+    $response->assertRedirect(route('login'));
+});
+```
+
+### API Testing with Pest
+```php
+<?php
+
+use App\Models\Order;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+it('can get orders via api', function () {
+    $user = User::factory()->create();
+    $orders = Order::factory()->count(3)->create();
+
+    $response = $this->actingAs($user, 'api')
+        ->getJson('/api/orders');
+
+    $response->assertStatus(200);
+    $response->assertJsonStructure([
+        'data' => [
+            '*' => [
+                'id',
+                'customer_id',
+                'total_amount',
+                'status',
+                'created_at',
+            ],
+        ],
+    ]);
+});
+
+it('can update order status via api', function () {
+    $user = User::factory()->create();
+    $order = Order::factory()->create(['status' => 'pending']);
+
+    $response = $this->actingAs($user, 'api')
+        ->patchJson("/api/orders/{$order->id}", [
+            'status' => 'processing',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJson([
+        'data' => [
+            'id' => $order->id,
+            'status' => 'processing',
+        ],
+    ]);
+
+    $this->assertDatabaseHas('orders', [
+        'id' => $order->id,
+        'status' => 'processing',
+    ]);
+});
+```
+
+## Test Data Management
+
+### Factory Usage with Pest
+```php
+// Use factories for consistent test data
+it('calculates order total correctly', function () {
+    $order = Order::factory()
+        ->has(OrderItem::factory()->count(3))
+        ->create();
+
+    expect($order->calculateTotal())->toBeGreaterThan(0);
+});
+
+// Use factory states for specific scenarios
+it('can get pending orders', function () {
+    Order::factory()->pending()->count(5)->create();
+    Order::factory()->delivered()->count(3)->create();
+
+    $pendingOrders = Order::pending()->get();
+
+    expect($pendingOrders)->toHaveCount(5);
+    expect($pendingOrders->every(fn($order) => $order->status === 'pending'))->toBeTrue();
+});
+```
+
+### Database Transactions
+```php
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class); // Automatically rolls back after each test
+
+it('has clean database between tests', function () {
+    // This test runs with a clean database
+    expect(Order::count())->toBe(0);
+});
+```
+
+## Running Tests
+
+### Test Commands
+```bash
+# Run all tests with Pest
+php artisan test
+
+# Run specific test file
+php artisan test tests/Unit/OrderTest.php
+
+# Run tests with coverage
+php artisan test --coverage
+
+# Run tests in parallel
+php artisan test --parallel
+
+# Run specific test method
+php artisan test --filter test_can_create_order
+```
+
+### Continuous Integration
+- Run tests on every commit
+- Include code coverage reports
+- Test against multiple PHP versions
+- Use database transactions for speed
+- Mock external services
