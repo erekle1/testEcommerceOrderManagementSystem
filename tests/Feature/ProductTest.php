@@ -29,9 +29,16 @@ class ProductTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'products' => [
-                    '*' => ['id', 'name', 'description', 'price', 'stock', 'category']
-                ]
+                'success',
+                'message',
+                'data' => [
+                    'products' => [
+                        '*' => ['id', 'name', 'description', 'price', 'stock', 'category']
+                    ],
+                    'total_count',
+                    'filters_applied',
+                ],
+                'meta' => ['timestamp', 'version'],
             ]);
     }
 
@@ -46,7 +53,7 @@ class ProductTest extends TestCase
         $response = $this->getJson("/api/products?category_id={$category1->id}");
 
         $response->assertStatus(200);
-        $this->assertCount(3, $response->json('products'));
+        $this->assertCount(3, $response->json('data.products'));
     }
 
     public function test_can_filter_products_by_price_range(): void
@@ -58,7 +65,7 @@ class ProductTest extends TestCase
         $response = $this->getJson('/api/products?min_price=20&max_price=80');
 
         $response->assertStatus(200);
-        $this->assertCount(1, $response->json('products'));
+        $this->assertCount(1, $response->json('data.products'));
     }
 
     public function test_can_search_products_by_name(): void
@@ -70,7 +77,7 @@ class ProductTest extends TestCase
         $response = $this->getJson('/api/products?search=iPhone');
 
         $response->assertStatus(200);
-        $this->assertCount(1, $response->json('products'));
+        $this->assertCount(1, $response->json('data.products'));
     }
 
     public function test_can_show_product(): void
@@ -81,7 +88,12 @@ class ProductTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'product' => ['id', 'name', 'description', 'price', 'stock', 'category']
+                'success',
+                'message',
+                'data' => [
+                    'product' => ['id', 'name', 'description', 'price', 'stock', 'category']
+                ],
+                'meta' => ['timestamp', 'version'],
             ]);
     }
 
@@ -103,8 +115,12 @@ class ProductTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonStructure([
+                'success',
                 'message',
-                'product' => ['id', 'name', 'description', 'price', 'stock']
+                'data' => [
+                    'product' => ['id', 'name', 'description', 'price', 'stock']
+                ],
+                'meta' => ['timestamp', 'version'],
             ]);
 
         $this->assertDatabaseHas('products', [

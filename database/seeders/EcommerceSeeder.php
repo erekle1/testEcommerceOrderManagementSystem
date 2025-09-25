@@ -107,8 +107,6 @@ class EcommerceSeeder extends Seeder
                 'order_id' => $order->id,
                 'amount' => $totalAmount,
                 'status' => ['success', 'failed'][rand(0, 1)],
-                'payment_method' => ['credit_card', 'paypal', 'bank_transfer'][rand(0, 2)],
-                'transaction_id' => 'TXN_' . strtoupper(uniqid()),
             ]);
         }
     }

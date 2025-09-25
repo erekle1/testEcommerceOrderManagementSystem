@@ -39,10 +39,16 @@ class CartTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'cart_items' => [
-                    '*' => ['id', 'quantity', 'product']
+                'success',
+                'message',
+                'data' => [
+                    'cart_items' => [
+                        '*' => ['id', 'quantity', 'product']
+                    ],
+                    'total',
+                    'items_count',
                 ],
-                'total'
+                'meta' => ['timestamp', 'version'],
             ]);
     }
 
@@ -61,8 +67,12 @@ class CartTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonStructure([
+                'success',
                 'message',
-                'cart_item' => ['id', 'quantity', 'product']
+                'data' => [
+                    'cart_item' => ['id', 'quantity', 'product']
+                ],
+                'meta' => ['timestamp', 'version'],
             ]);
 
         $this->assertDatabaseHas('carts', [

@@ -11,6 +11,8 @@ A comprehensive Laravel 12 backend API for managing e-commerce operations includ
 - **Payment Processing**: Mock payment system with transaction tracking
 - **Notifications**: Order confirmation emails using Laravel queues
 - **Caching**: Product listings cached for improved performance
+- **API Resources**: Consistent JSON response format using Laravel Resource classes
+- **Form Requests**: Centralized validation using Laravel Form Request classes
 - **Testing**: Comprehensive test suite with 97%+ coverage
 
 ## Technology Stack
@@ -97,6 +99,64 @@ A comprehensive Laravel 12 backend API for managing e-commerce operations includ
 http://localhost:8000/api
 ```
 
+### API Response Format
+
+All API responses follow a consistent JSON structure using Laravel Resource classes:
+
+#### Success Response Format
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": {
+    "resource": { ... },
+    "additional_info": { ... }
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:00.000000Z",
+    "version": "1.0"
+  }
+}
+```
+
+#### Error Response Format
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "errors": {
+    "field_name": ["Error message"],
+    "general": ["General error message"]
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:00.000000Z",
+    "version": "1.0"
+  }
+}
+```
+
+### Resource Classes
+
+The API uses Laravel Resource classes to ensure consistent data transformation:
+
+- **UserResource**: User data with role information
+- **CategoryResource**: Category data with product count and relationships
+- **ProductResource**: Product data with category relationships and stock status
+- **CartResource**: Cart item data with product details and calculated totals
+- **OrderResource**: Order data with items, payments, and status information
+- **PaymentResource**: Payment data with order relationships and status
+- **OrderItemResource**: Individual order item data with product details
+
+### Form Request Classes
+
+Validation is handled through dedicated Form Request classes:
+
+- **Auth**: `RegisterRequest`, `LoginRequest`
+- **Cart**: `StoreCartRequest`, `UpdateCartRequest`
+- **Order**: `StoreOrderRequest`, `UpdateOrderRequest`
+- **Product**: `StoreProductRequest`, `UpdateProductRequest`
+- **Category**: `StoreCategoryRequest`, `UpdateCategoryRequest`
+
 ### Authentication
 
 All protected routes require a Bearer token in the Authorization header:
@@ -159,6 +219,30 @@ curl -X POST http://localhost:8000/api/register \
   }'
 ```
 
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "customer",
+      "email_verified_at": null,
+      "created_at": "2024-01-01T12:00:00.000000Z",
+      "updated_at": "2024-01-01T12:00:00.000000Z"
+    },
+    "token": "1|abc123..."
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:00.000000Z",
+    "version": "1.0"
+  }
+}
+```
+
 #### Login
 ```bash
 curl -X POST http://localhost:8000/api/login \
@@ -169,9 +253,75 @@ curl -X POST http://localhost:8000/api/login \
   }'
 ```
 
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "customer",
+      "email_verified_at": null,
+      "created_at": "2024-01-01T12:00:00.000000Z",
+      "updated_at": "2024-01-01T12:00:00.000000Z"
+    },
+    "token": "2|def456..."
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:00.000000Z",
+    "version": "1.0"
+  }
+}
+```
+
 #### Get Products with Filters
 ```bash
 curl -X GET "http://localhost:8000/api/products?category_id=1&min_price=10&max_price=100&search=phone"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Products retrieved successfully",
+  "data": {
+    "products": [
+      {
+        "id": 1,
+        "name": "iPhone 15",
+        "description": "Latest iPhone with advanced features",
+        "price": 999.99,
+        "stock": 50,
+        "is_in_stock": true,
+        "category": {
+          "id": 1,
+          "name": "Electronics",
+          "description": "Electronic devices and gadgets",
+          "products_count": 5,
+          "created_at": "2024-01-01T12:00:00.000000Z",
+          "updated_at": "2024-01-01T12:00:00.000000Z"
+        },
+        "category_id": 1,
+        "created_at": "2024-01-01T12:00:00.000000Z",
+        "updated_at": "2024-01-01T12:00:00.000000Z"
+      }
+    ],
+    "total_count": 1,
+    "filters_applied": {
+      "category_id": "1",
+      "min_price": "10",
+      "max_price": "100",
+      "search": "phone"
+    }
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:00.000000Z",
+    "version": "1.0"
+  }
+}
 ```
 
 #### Add to Cart
@@ -183,6 +333,41 @@ curl -X POST http://localhost:8000/api/cart \
     "product_id": 1,
     "quantity": 2
   }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Product added to cart successfully",
+  "data": {
+    "cart_item": {
+      "id": 1,
+      "user_id": 1,
+      "product_id": 1,
+      "quantity": 2,
+      "unit_price": 999.99,
+      "total_price": 1999.98,
+      "product": {
+        "id": 1,
+        "name": "iPhone 15",
+        "description": "Latest iPhone with advanced features",
+        "price": 999.99,
+        "stock": 50,
+        "is_in_stock": true,
+        "category_id": 1,
+        "created_at": "2024-01-01T12:00:00.000000Z",
+        "updated_at": "2024-01-01T12:00:00.000000Z"
+      },
+      "created_at": "2024-01-01T12:00:00.000000Z",
+      "updated_at": "2024-01-01T12:00:00.000000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:00.000000Z",
+    "version": "1.0"
+  }
+}
 ```
 
 #### Create Order
@@ -198,6 +383,54 @@ curl -X POST http://localhost:8000/api/orders \
       }
     ]
   }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Order created successfully",
+  "data": {
+    "order": {
+      "id": 1,
+      "user_id": 1,
+      "total_amount": 1999.98,
+      "status": "pending",
+      "status_label": "Pending",
+      "items_count": 1,
+      "order_items": [
+        {
+          "id": 1,
+          "order_id": 1,
+          "product_id": 1,
+          "quantity": 2,
+          "unit_price": 999.99,
+          "subtotal": 1999.98,
+          "product": {
+            "id": 1,
+            "name": "iPhone 15",
+            "description": "Latest iPhone with advanced features",
+            "price": 999.99,
+            "stock": 48,
+            "is_in_stock": true,
+            "category_id": 1,
+            "created_at": "2024-01-01T12:00:00.000000Z",
+            "updated_at": "2024-01-01T12:00:00.000000Z"
+          },
+          "created_at": "2024-01-01T12:00:00.000000Z",
+          "updated_at": "2024-01-01T12:00:00.000000Z"
+        }
+      ],
+      "payments": [],
+      "created_at": "2024-01-01T12:00:00.000000Z",
+      "updated_at": "2024-01-01T12:00:00.000000Z"
+    }
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:00.000000Z",
+    "version": "1.0"
+  }
+}
 ```
 
 ## User Roles

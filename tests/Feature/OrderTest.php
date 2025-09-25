@@ -42,8 +42,12 @@ class OrderTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonStructure([
+                'success',
                 'message',
-                'order' => ['id', 'total_amount', 'status', 'order_items']
+                'data' => [
+                    'order' => ['id', 'total_amount', 'status', 'order_items']
+                ],
+                'meta' => ['timestamp', 'version'],
             ]);
 
         $this->assertDatabaseHas('orders', [
@@ -65,12 +69,18 @@ class OrderTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'orders' => [
-                    '*' => ['id', 'total_amount', 'status', 'order_items']
-                ]
+                'success',
+                'message',
+                'data' => [
+                    'orders' => [
+                        '*' => ['id', 'total_amount', 'status', 'order_items']
+                    ],
+                    'total_count',
+                ],
+                'meta' => ['timestamp', 'version'],
             ]);
 
-        $this->assertCount(1, $response->json('orders'));
+        $this->assertCount(1, $response->json('data.orders'));
     }
 
     public function test_customer_can_view_specific_order(): void
@@ -84,7 +94,12 @@ class OrderTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'order' => ['id', 'total_amount', 'status', 'order_items']
+                'success',
+                'message',
+                'data' => [
+                    'order' => ['id', 'total_amount', 'status', 'order_items']
+                ],
+                'meta' => ['timestamp', 'version'],
             ]);
     }
 

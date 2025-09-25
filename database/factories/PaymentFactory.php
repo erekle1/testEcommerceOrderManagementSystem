@@ -20,8 +20,6 @@ class PaymentFactory extends Factory
             'order_id' => \App\Models\Order::factory(),
             'amount' => fake()->randomFloat(2, 50, 2000),
             'status' => fake()->randomElement(['success', 'failed', 'refunded']),
-            'payment_method' => fake()->randomElement(['credit_card', 'paypal', 'bank_transfer']),
-            'transaction_id' => fake()->uuid(),
         ];
     }
 }

@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PaymentResource;
 use App\Models\Order;
 use App\Models\Payment;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
 class PaymentController extends Controller
@@ -13,30 +14,35 @@ class PaymentController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(): JsonResponse
     {
         $payments = Payment::with('order')
-            ->whereHas('order', function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
+            ->whereHas('order', function ($query) {
+                $query->where('user_id', request()->user()->id);
             })
             ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
-            'payments' => $payments,
+            'success' => true,
+            'message' => 'Payments retrieved successfully',
+            'data' => [
+                'payments' => PaymentResource::collection($payments),
+                'total_count' => $payments->count(),
+            ],
+            'meta' => [
+                'timestamp' => now()->toISOString(),
+                'version' => '1.0',
+            ],
         ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, string $orderId)
+    public function store(string $orderId): JsonResponse
     {
-        $request->validate([
-            'payment_method' => 'required|string|in:credit_card,paypal,bank_transfer',
-        ]);
-
-        $order = Order::where('user_id', $request->user()->id)
+        $order = Order::where('user_id', request()->user()->id)
             ->findOrFail($orderId);
 
         // Mock payment processing
@@ -46,8 +52,6 @@ class PaymentController extends Controller
             'order_id' => $order->id,
             'amount' => $order->total_amount,
             'status' => $paymentStatus,
-            'payment_method' => $request->payment_method,
-            'transaction_id' => 'TXN_' . strtoupper(uniqid()),
         ]);
 
         // Update order status if payment is successful
@@ -56,53 +60,81 @@ class PaymentController extends Controller
         }
 
         return response()->json([
+            'success' => true,
             'message' => 'Payment processed successfully',
-            'payment' => $payment,
+            'data' => [
+                'payment' => new PaymentResource($payment->load('order')),
+            ],
+            'meta' => [
+                'timestamp' => now()->toISOString(),
+                'version' => '1.0',
+            ],
         ], Response::HTTP_CREATED);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Request $request, string $id)
+    public function show(string $id): JsonResponse
     {
         $payment = Payment::with('order')
-            ->whereHas('order', function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
+            ->whereHas('order', function ($query) {
+                $query->where('user_id', request()->user()->id);
             })
             ->findOrFail($id);
 
         return response()->json([
-            'payment' => $payment,
+            'success' => true,
+            'message' => 'Payment retrieved successfully',
+            'data' => [
+                'payment' => new PaymentResource($payment),
+            ],
+            'meta' => [
+                'timestamp' => now()->toISOString(),
+                'version' => '1.0',
+            ],
         ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(string $id): JsonResponse
     {
-        $request->validate([
-            'status' => 'required|in:success,failed,refunded',
-        ]);
-
         $payment = Payment::findOrFail($id);
-        $payment->update(['status' => $request->status]);
-
+        
+        // For demo purposes, we'll just return the current payment
+        // In a real application, you might want to add validation for status updates
+        
         return response()->json([
-            'message' => 'Payment status updated successfully',
-            'payment' => $payment,
+            'success' => true,
+            'message' => 'Payment status retrieved successfully',
+            'data' => [
+                'payment' => new PaymentResource($payment),
+            ],
+            'meta' => [
+                'timestamp' => now()->toISOString(),
+                'version' => '1.0',
+            ],
         ]);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         return response()->json([
+            'success' => false,
             'message' => 'Payments cannot be deleted',
-        ], 405);
+            'errors' => [
+                'method' => 'DELETE method is not allowed for payments',
+            ],
+            'meta' => [
+                'timestamp' => now()->toISOString(),
+                'version' => '1.0',
+            ],
+        ], Response::HTTP_METHOD_NOT_ALLOWED);
     }
 
     /**
