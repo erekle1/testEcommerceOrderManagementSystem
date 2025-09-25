@@ -18,6 +18,10 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
 							}
 						],
 						"body": {
@@ -46,6 +50,10 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
 							}
 						],
 						"body": {
@@ -72,6 +80,10 @@
 						"method": "POST",
 						"header": [
 							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
 							}
@@ -95,6 +107,10 @@
 					"request": {
 						"method": "GET",
 						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
@@ -124,7 +140,12 @@
 					"name": "List Categories",
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/api/categories",
 							"host": [
@@ -143,7 +164,12 @@
 					"name": "Get Category",
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/api/categories/1",
 							"host": [
@@ -201,6 +227,10 @@
 								"value": "application/json"
 							},
 							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
 								"value": "Bearer {{admin_token}}"
 							}
@@ -210,17 +240,17 @@
 							"raw": "{\n    \"name\": \"Updated Electronics\",\n    \"description\": \"Updated description for electronic devices\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/categories/1",
+							"raw": "{{base_url}}/api/categories/{{category_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"categories",
-								"1"
+								"{{category_id}}"
 							]
 						},
-						"description": "Update a category (admin only)"
+						"description": "Update a category (admin only). Replace {{category_id}} with actual category ID."
 					},
 					"response": []
 				},
@@ -229,6 +259,10 @@
 					"request": {
 						"method": "DELETE",
 						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{admin_token}}"
@@ -259,7 +293,12 @@
 					"name": "List Products",
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/api/products",
 							"host": [
@@ -278,7 +317,12 @@
 					"name": "List Products with Filters",
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/api/products?category_id=1&min_price=10&max_price=100&search=phone",
 							"host": [
@@ -315,7 +359,12 @@
 					"name": "Get Product",
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/api/products/1",
 							"host": [
@@ -373,6 +422,10 @@
 								"value": "application/json"
 							},
 							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
 								"value": "Bearer {{admin_token}}"
 							}
@@ -382,17 +435,17 @@
 							"raw": "{\n    \"name\": \"iPhone 15 Pro\",\n    \"description\": \"Updated iPhone with pro features\",\n    \"price\": 1199.99,\n    \"stock\": 30,\n    \"category_id\": 1\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/products/1",
+							"raw": "{{base_url}}/api/products/{{product_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"products",
-								"1"
+								"{{product_id}}"
 							]
 						},
-						"description": "Update a product (admin only)"
+						"description": "Update a product (admin only). Replace {{product_id}} with actual product ID."
 					},
 					"response": []
 				},
@@ -401,6 +454,10 @@
 					"request": {
 						"method": "DELETE",
 						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{admin_token}}"
@@ -432,6 +489,10 @@
 					"request": {
 						"method": "GET",
 						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
@@ -493,6 +554,10 @@
 								"value": "application/json"
 							},
 							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
 							}
@@ -502,17 +567,17 @@
 							"raw": "{\n    \"quantity\": 3\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/cart/1",
+							"raw": "{{base_url}}/api/cart/{{cart_item_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"cart",
-								"1"
+								"{{cart_item_id}}"
 							]
 						},
-						"description": "Update cart item quantity (customer only)"
+						"description": "Update cart item quantity (customer only). Replace {{cart_item_id}} with actual cart item ID."
 					},
 					"response": []
 				},
@@ -521,6 +586,10 @@
 					"request": {
 						"method": "DELETE",
 						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
@@ -552,6 +621,10 @@
 					"request": {
 						"method": "GET",
 						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
@@ -609,6 +682,10 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
 							}
@@ -638,6 +715,10 @@
 								"value": "application/json"
 							},
 							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
 								"value": "Bearer {{admin_token}}"
 							}
@@ -647,18 +728,17 @@
 							"raw": "{\n    \"status\": \"confirmed\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/orders/1/status",
+							"raw": "{{base_url}}/api/orders/{{order_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"orders",
-								"1",
-								"status"
+								"{{order_id}}"
 							]
 						},
-						"description": "Update order status (admin only)"
+						"description": "Update order status (admin only). Replace {{order_id}} with actual order ID. Valid statuses: pending, confirmed, shipped, delivered, cancelled"
 					},
 					"response": []
 				}
@@ -673,6 +753,10 @@
 					"request": {
 						"method": "GET",
 						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
@@ -702,27 +786,107 @@
 								"value": "application/json"
 							},
 							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{}"
+							"raw": "{\n    \"payment_method\": \"credit_card\",\n    \"card_number\": \"4111111111111111\",\n    \"expiry_date\": \"12/25\",\n    \"cvv\": \"123\",\n    \"cardholder_name\": \"John Doe\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/orders/1/payment",
+							"raw": "{{base_url}}/api/orders/{{order_id}}/payment",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"orders",
-								"1",
+								"{{order_id}}",
 								"payment"
 							]
 						},
-						"description": "Process payment for an order"
+						"description": "Process payment for an order. Replace {{order_id}} with actual order ID. Mock payment with 90% success rate. Sample credit card data provided."
+					},
+					"response": []
+				},
+				{
+					"name": "Process Payment (PayPal)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_method\": \"paypal\",\n    \"paypal_email\": \"customer@example.com\",\n    \"paypal_token\": \"PAYPAL_TOKEN_12345\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/{{order_id}}/payment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"{{order_id}}",
+								"payment"
+							]
+						},
+						"description": "Process payment using PayPal. Replace {{order_id}} with actual order ID. Mock payment with 90% success rate."
+					},
+					"response": []
+				},
+				{
+					"name": "Process Payment (Bank Transfer)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_method\": \"bank_transfer\",\n    \"bank_name\": \"Chase Bank\",\n    \"account_number\": \"****1234\",\n    \"routing_number\": \"021000021\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/{{order_id}}/payment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"{{order_id}}",
+								"payment"
+							]
+						},
+						"description": "Process payment using bank transfer. Replace {{order_id}} with actual order ID. Mock payment with 90% success rate."
 					},
 					"response": []
 				},
@@ -732,22 +896,26 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}"
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/payments/1",
+							"raw": "{{base_url}}/api/payments/{{payment_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"payments",
-								"1"
+								"{{payment_id}}"
 							]
 						},
-						"description": "Get specific payment details"
+						"description": "Get specific payment details. Replace {{payment_id}} with actual payment ID."
 					},
 					"response": []
 				}
@@ -789,6 +957,31 @@
 		{
 			"key": "admin_token",
 			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "category_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "product_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "cart_item_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "order_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "payment_id",
+			"value": "1",
 			"type": "string"
 		}
 	]

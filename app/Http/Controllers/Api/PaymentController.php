@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Resources\PaymentResource;
 use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 
-class PaymentController extends Controller
+class PaymentController extends BaseApiController
 {
     /**
      * Display a listing of the resource.
@@ -21,20 +19,12 @@ class PaymentController extends Controller
                 $query->where('user_id', request()->user()->id);
             })
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(15);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payments retrieved successfully',
-            'data' => [
-                'payments' => PaymentResource::collection($payments),
-                'total_count' => $payments->count(),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->paginatedResponse(
+            PaymentResource::collection($payments),
+            'Payments retrieved successfully'
+        );
     }
 
     /**
@@ -59,17 +49,10 @@ class PaymentController extends Controller
             $order->update(['status' => 'confirmed']);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment processed successfully',
-            'data' => [
-                'payment' => new PaymentResource($payment->load('order')),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ], Response::HTTP_CREATED);
+        return $this->createdResponse(
+            PaymentResource::make($payment->load('order')),
+            'Payment processed successfully'
+        );
     }
 
     /**
@@ -83,17 +66,10 @@ class PaymentController extends Controller
             })
             ->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment retrieved successfully',
-            'data' => [
-                'payment' => new PaymentResource($payment),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            PaymentResource::make($payment),
+            'Payment retrieved successfully'
+        );
     }
 
     /**
@@ -106,17 +82,10 @@ class PaymentController extends Controller
         // For demo purposes, we'll just return the current payment
         // In a real application, you might want to add validation for status updates
         
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment status retrieved successfully',
-            'data' => [
-                'payment' => new PaymentResource($payment),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            PaymentResource::make($payment),
+            'Payment status retrieved successfully'
+        );
     }
 
     /**
@@ -124,17 +93,7 @@ class PaymentController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        return response()->json([
-            'success' => false,
-            'message' => 'Payments cannot be deleted',
-            'errors' => [
-                'method' => 'DELETE method is not allowed for payments',
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ], Response::HTTP_METHOD_NOT_ALLOWED);
+        return $this->methodNotAllowedResponse('Payments cannot be deleted');
     }
 
     /**

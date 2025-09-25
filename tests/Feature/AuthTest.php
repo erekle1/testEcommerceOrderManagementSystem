@@ -93,9 +93,7 @@ class AuthTest extends TestCase
             ->assertJsonStructure([
                 'success',
                 'message',
-                'data' => [
-                    'user' => ['id', 'name', 'email', 'role'],
-                ],
+                'data' => ['id', 'name', 'email', 'role'],
                 'meta' => ['timestamp', 'version'],
             ]);
     }

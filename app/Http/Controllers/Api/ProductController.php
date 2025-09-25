@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 
-class ProductController extends Controller
+class ProductController extends BaseApiController
 {
     /**
      * Display a listing of the resource.
@@ -25,28 +23,22 @@ class ProductController extends Controller
               ->filterByPrice(request()->input('min_price'), request()->input('max_price'))
               ->searchByName(request()->input('search'));
 
-        // Cache the results for 15 minutes
+        // Cache the results for 15 minutes with pagination
         $cacheKey = 'products_' . md5(serialize(request()->all()));
-        $products = Cache::remember($cacheKey, 900, fn() => $query->get());
+        $products = Cache::remember($cacheKey, 900, fn() => $query->paginate(15));
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Products retrieved successfully',
-            'data' => [
-                'products' => ProductResource::collection($products),
-                'total_count' => $products->count(),
+        return $this->paginatedResponse(
+            ProductResource::collection($products),
+            'Products retrieved successfully',
+            additional: [
                 'filters_applied' => [
                     'category_id' => request()->input('category_id'),
                     'min_price' => request()->input('min_price'),
                     'max_price' => request()->input('max_price'),
                     'search' => request()->input('search'),
                 ],
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+            ]
+        );
     }
 
     /**
@@ -59,17 +51,10 @@ class ProductController extends Controller
         // Clear products cache
         Cache::forget('products_*');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Product created successfully',
-            'data' => [
-                'product' => new ProductResource($product->load('category')),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ], Response::HTTP_CREATED);
+        return $this->createdResponse(
+            ProductResource::make($product->load('category')),
+            'Product created successfully'
+        );
     }
 
     /**
@@ -79,17 +64,10 @@ class ProductController extends Controller
     {
         $product = Product::with('category')->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Product retrieved successfully',
-            'data' => [
-                'product' => new ProductResource($product),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            ProductResource::make($product),
+            'Product retrieved successfully'
+        );
     }
 
     /**
@@ -103,17 +81,10 @@ class ProductController extends Controller
         // Clear products cache
         Cache::forget('products_*');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Product updated successfully',
-            'data' => [
-                'product' => new ProductResource($product->load('category')),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            ProductResource::make($product->load('category')),
+            'Product updated successfully'
+        );
     }
 
     /**
@@ -127,14 +98,9 @@ class ProductController extends Controller
         // Clear products cache
         Cache::forget('products_*');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Product deleted successfully',
-            'data' => null,
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->successResponse(
+            null,
+            'Product deleted successfully'
+        );
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
@@ -13,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
-class AuthController extends Controller
+class AuthController extends BaseApiController
 {
     /**
      * Register a new user.
@@ -29,18 +28,14 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User registered successfully',
-            'data' => [
-                'user' => new UserResource($user),
+        return $this->successResponse(
+            [
+                'user' => UserResource::make($user),
                 'token' => $token,
             ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ], Response::HTTP_CREATED);
+            'User registered successfully',
+            Response::HTTP_CREATED
+        );
     }
 
     /**
@@ -57,18 +52,13 @@ class AuthController extends Controller
         $user = User::where('email', $request->validated('email'))->firstOrFail();
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Login successful',
-            'data' => [
-                'user' => new UserResource($user),
+        return $this->successResponse(
+            [
+                'user' => UserResource::make($user),
                 'token' => $token,
             ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+            'Login successful'
+        );
     }
 
     /**
@@ -76,17 +66,24 @@ class AuthController extends Controller
      */
     public function logout(): JsonResponse
     {
-        request()->user()?->currentAccessToken()?->delete();
+        try {
+            $user = request()->user();
+            
+            if ($user) {
+                $user->currentAccessToken()?->delete();
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Logout successful',
-            'data' => null,
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+            return $this->successResponse(
+                null,
+                'Logout successful'
+            );
+        } catch (\Exception $e) {
+            // Handle any authentication errors gracefully
+            return $this->successResponse(
+                null,
+                'Logout successful'
+            );
+        }
     }
 
     /**
@@ -94,16 +91,9 @@ class AuthController extends Controller
      */
     public function me(): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'message' => 'User profile retrieved successfully',
-            'data' => [
-                'user' => new UserResource(request()->user()),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            UserResource::make(request()->user()),
+            'User profile retrieved successfully'
+        );
     }
 }

@@ -35,4 +35,25 @@ class BaseApiResource extends JsonResource
             ],
         ];
     }
+
+    /**
+     * Customize the pagination information for the resource.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  array  $paginated
+     * @param  array  $default
+     * @return array
+     */
+    public function paginationInformation(Request $request, array $paginated, array $default): array
+    {
+        return [
+            'current_page' => $paginated['current_page'],
+            'per_page' => $paginated['per_page'],
+            'total' => $paginated['total'],
+            'last_page' => $paginated['last_page'],
+            'from' => $paginated['from'],
+            'to' => $paginated['to'],
+            'has_more_pages' => $paginated['current_page'] < $paginated['last_page'],
+        ];
+    }
 }

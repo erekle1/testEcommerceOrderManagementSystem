@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Cart\StoreCartRequest;
 use App\Http\Requests\Cart\UpdateCartRequest;
 use App\Http\Resources\CartResource;
 use App\Models\Cart;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 
-class CartController extends Controller
+class CartController extends BaseApiController
 {
     /**
      * Display a listing of the resource.
@@ -20,23 +18,18 @@ class CartController extends Controller
     {
         $cartItems = Cart::with('product.category')
             ->where('user_id', request()->user()->id)
-            ->get();
+            ->paginate(15);
 
         $total = $cartItems->sum('total_price');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cart retrieved successfully',
-            'data' => [
-                'cart_items' => CartResource::collection($cartItems),
+        return $this->paginatedResponse(
+            CartResource::collection($cartItems),
+            'Cart retrieved successfully',
+            additional: [
                 'total' => (float) $total,
                 'items_count' => $cartItems->count(),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+            ]
+        );
     }
 
     /**
@@ -47,18 +40,11 @@ class CartController extends Controller
         $product = Product::findOrFail($request->validated('product_id'));
 
         if (!$product->isInStock($request->validated('quantity'))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Insufficient stock',
-                'errors' => [
-                    'stock' => 'The requested quantity exceeds available stock',
-                    'available_stock' => $product->stock,
-                ],
-                'meta' => [
-                    'timestamp' => now()->toISOString(),
-                    'version' => '1.0',
-                ],
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->errorResponse(
+                'Insufficient stock',
+                ['stock' => 'The requested quantity exceeds available stock'],
+                additional: ['available_stock' => $product->stock]
+            );
         }
 
         // Check if item already exists in cart
@@ -77,17 +63,10 @@ class CartController extends Controller
             ]);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Product added to cart successfully',
-            'data' => [
-                'cart_item' => new CartResource($cartItem->load('product')),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ], Response::HTTP_CREATED);
+        return $this->createdResponse(
+            CartResource::make($cartItem->load('product')),
+            'Product added to cart successfully'
+        );
     }
 
     /**
@@ -99,17 +78,10 @@ class CartController extends Controller
             ->where('user_id', request()->user()->id)
             ->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cart item retrieved successfully',
-            'data' => [
-                'cart_item' => new CartResource($cartItem),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            CartResource::make($cartItem),
+            'Cart item retrieved successfully'
+        );
     }
 
     /**
@@ -123,33 +95,19 @@ class CartController extends Controller
         $product = $cartItem->product;
 
         if (!$product->isInStock($request->validated('quantity'))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Insufficient stock',
-                'errors' => [
-                    'stock' => 'The requested quantity exceeds available stock',
-                    'available_stock' => $product->stock,
-                ],
-                'meta' => [
-                    'timestamp' => now()->toISOString(),
-                    'version' => '1.0',
-                ],
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->errorResponse(
+                'Insufficient stock',
+                ['stock' => 'The requested quantity exceeds available stock'],
+                additional: ['available_stock' => $product->stock]
+            );
         }
 
         $cartItem->update(['quantity' => $request->validated('quantity')]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cart item updated successfully',
-            'data' => [
-                'cart_item' => new CartResource($cartItem->load('product')),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            CartResource::make($cartItem->load('product')),
+            'Cart item updated successfully'
+        );
     }
 
     /**
@@ -162,14 +120,9 @@ class CartController extends Controller
 
         $cartItem->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cart item removed successfully',
-            'data' => null,
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->successResponse(
+            null,
+            'Cart item removed successfully'
+        );
     }
 }

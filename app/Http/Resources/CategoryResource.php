@@ -13,14 +13,10 @@ class CategoryResource extends BaseApiResource
      */
     public function toArray(Request $request): array
     {
-        return [
-            'id' => $this->id,
+        return array_merge(parent::toArray($request), [
             'name' => $this->name,
             'description' => $this->description,
-            'products_count' => $this->whenLoaded('products', fn() => $this->products->count()),
-            'products' => ProductResource::collection($this->whenLoaded('products')),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
-        ];
+            'products_count' => $this->whenCounted('products'),
+        ]);
     }
 }

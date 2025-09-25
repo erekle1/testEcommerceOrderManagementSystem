@@ -2,35 +2,27 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Category\StoreCategoryRequest;
 use App\Http\Requests\Category\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 
-class CategoryController extends Controller
+class CategoryController extends BaseApiController
 {
     /**
      * Display a listing of the resource.
      */
     public function index(): JsonResponse
     {
-        $categories = Category::with('products')->get();
+        $categories = Category::withCount('products')
+            ->paginate(15);
         
-        return response()->json([
-            'success' => true,
-            'message' => 'Categories retrieved successfully',
-            'data' => [
-                'categories' => CategoryResource::collection($categories),
-                'total_count' => $categories->count(),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->paginatedResponse(
+            CategoryResource::collection($categories),
+            'Categories retrieved successfully',
+            additional: ['total_count' => $categories->total()]
+        );
     }
 
     /**
@@ -40,17 +32,10 @@ class CategoryController extends Controller
     {
         $category = Category::create($request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Category created successfully',
-            'data' => [
-                'category' => new CategoryResource($category),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ], Response::HTTP_CREATED);
+        return $this->createdResponse(
+            CategoryResource::make($category),
+            'Category created successfully'
+        );
     }
 
     /**
@@ -58,19 +43,13 @@ class CategoryController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $category = Category::with('products')->findOrFail($id);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Category retrieved successfully',
-            'data' => [
-                'category' => new CategoryResource($category),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->handleExceptions(function () use ($id) {
+            $category = Category::withCount('products')->findOrFail($id);
+            return $this->resourceResponse(
+                CategoryResource::make($category),
+                'Category retrieved successfully'
+            );
+        }, 'Failed to retrieve category');
     }
 
     /**
@@ -78,20 +57,15 @@ class CategoryController extends Controller
      */
     public function update(UpdateCategoryRequest $request, string $id): JsonResponse
     {
-        $category = Category::findOrFail($id);
-        $category->update($request->validated());
+        return $this->handleExceptions(function () use ($request, $id) {
+            $category = Category::findOrFail($id);
+            $category->update($request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Category updated successfully',
-            'data' => [
-                'category' => new CategoryResource($category->load('products')),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+            return $this->resourceResponse(
+                CategoryResource::make($category->load('products')),
+                'Category updated successfully'
+            );
+        }, 'Failed to update category');
     }
 
     /**
@@ -99,17 +73,14 @@ class CategoryController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $category = Category::findOrFail($id);
-        $category->delete();
+        return $this->handleExceptions(function () use ($id) {
+            $category = Category::findOrFail($id);
+            $category->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Category deleted successfully',
-            'data' => null,
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+            return $this->successResponse(
+                null,
+                'Category deleted successfully'
+            );
+        }, 'Failed to delete category');
     }
 }

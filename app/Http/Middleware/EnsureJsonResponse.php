@@ -3,11 +3,10 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class AdminMiddleware
+class EnsureJsonResponse
 {
     /**
      * Handle an incoming request.
@@ -16,10 +15,9 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user() || !$request->user()->isAdmin()) {
-            throw new AuthorizationException('Access denied. Admin privileges required.');
-        }
-
+        // Force JSON response for API routes
+        $request->headers->set('Accept', 'application/json');
+        
         return $next($request);
     }
 }

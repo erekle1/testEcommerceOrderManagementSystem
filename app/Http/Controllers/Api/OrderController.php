@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderRequest;
 use App\Http\Resources\OrderResource;
@@ -10,9 +9,8 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 
-class OrderController extends Controller
+class OrderController extends BaseApiController
 {
     public function __construct(
         private readonly OrderService $orderService
@@ -26,20 +24,12 @@ class OrderController extends Controller
         $orders = Order::with(['orderItems.product', 'payments'])
             ->where('user_id', request()->user()->id)
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(15);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Orders retrieved successfully',
-            'data' => [
-                'orders' => OrderResource::collection($orders),
-                'total_count' => $orders->count(),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->paginatedResponse(
+            OrderResource::collection($orders),
+            'Orders retrieved successfully'
+        );
     }
 
     /**
@@ -54,29 +44,15 @@ class OrderController extends Controller
             // Clear cart after successful order
             Cart::where('user_id', request()->user()->id)->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Order created successfully',
-                'data' => [
-                    'order' => new OrderResource($order->load(['orderItems.product', 'payments'])),
-                ],
-                'meta' => [
-                    'timestamp' => now()->toISOString(),
-                    'version' => '1.0',
-                ],
-            ], Response::HTTP_CREATED);
+            return $this->createdResponse(
+                OrderResource::make($order->load(['orderItems.product', 'payments'])),
+                'Order created successfully'
+            );
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'errors' => [
-                    'order' => $e->getMessage(),
-                ],
-                'meta' => [
-                    'timestamp' => now()->toISOString(),
-                    'version' => '1.0',
-                ],
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->errorResponse(
+                $e->getMessage(),
+                ['order' => $e->getMessage()]
+            );
         }
     }
 
@@ -89,17 +65,10 @@ class OrderController extends Controller
             ->where('user_id', request()->user()->id)
             ->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Order retrieved successfully',
-            'data' => [
-                'order' => new OrderResource($order),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            OrderResource::make($order),
+            'Order retrieved successfully'
+        );
     }
 
     /**
@@ -117,30 +86,16 @@ class OrderController extends Controller
         };
 
         if (!$success) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid status transition',
-                'errors' => [
-                    'status' => 'The order status cannot be changed to the requested status',
-                ],
-                'meta' => [
-                    'timestamp' => now()->toISOString(),
-                    'version' => '1.0',
-                ],
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->errorResponse(
+                'Invalid status transition',
+                ['status' => 'The order status cannot be changed to the requested status']
+            );
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Order status updated successfully',
-            'data' => [
-                'order' => new OrderResource($order->load(['orderItems.product', 'payments'])),
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ]);
+        return $this->resourceResponse(
+            OrderResource::make($order->load(['orderItems.product', 'payments'])),
+            'Order status updated successfully'
+        );
     }
 
     /**
@@ -149,16 +104,6 @@ class OrderController extends Controller
     public function destroy(string $id): JsonResponse
     {
         // Orders are typically not deleted, only cancelled
-        return response()->json([
-            'success' => false,
-            'message' => 'Orders cannot be deleted. Use cancel instead.',
-            'errors' => [
-                'method' => 'DELETE method is not allowed for orders',
-            ],
-            'meta' => [
-                'timestamp' => now()->toISOString(),
-                'version' => '1.0',
-            ],
-        ], Response::HTTP_METHOD_NOT_ALLOWED);
+        return $this->methodNotAllowedResponse('Orders cannot be deleted. Use cancel instead.');
     }
 }
