@@ -40,7 +40,7 @@ $encrypted = Crypt::encrypt($sensitiveData);
 $decrypted = Crypt::decrypt($encrypted);
 ```
 
-### Input Validation
+### Input Validation & SQL Injection Prevention
 ```php
 // Always validate user input
 public function store(Request $request)
@@ -53,10 +53,7 @@ public function store(Request $request)
     // Use validated data only
     User::create($validated);
 }
-```
 
-### SQL Injection Prevention
-```php
 // Use Eloquent ORM (automatically prevents SQL injection)
 $users = User::where('email', $email)->get();
 
@@ -83,22 +80,6 @@ Schema::table('orders', function (Blueprint $table) {
 });
 ```
 
-### Caching Strategies
-```php
-// Use Laravel's caching system
-use Illuminate\Support\Facades\Cache;
-
-// Cache expensive operations
-$products = Cache::remember('products', 3600, function () {
-    return Product::with('category')->get();
-});
-
-// Cache database queries
-$orders = Cache::remember("orders.{$customerId}", 300, function () use ($customerId) {
-    return Order::where('customer_id', $customerId)->get();
-});
-```
-
 ### Query Optimization
 ```php
 // Use chunking for large datasets
@@ -113,6 +94,34 @@ $orders = Order::paginate(15);
 
 // Use lazy loading for relationships
 $orders = Order::lazy();
+
+// Use cursor for large datasets
+foreach (Order::cursor() as $order) {
+    // Process each order without loading all into memory
+}
+
+// Use chunkById for ordered processing
+Order::chunkById(100, function ($orders) {
+    foreach ($orders as $order) {
+        // Process orders in batches
+    }
+});
+```
+
+### Caching Strategies
+```php
+// Use Laravel's caching system
+use Illuminate\Support\Facades\Cache;
+
+// Cache expensive operations
+$products = Cache::remember('products', 3600, function () {
+    return Product::with('category')->get();
+});
+
+// Cache database queries
+$orders = Cache::remember("orders.{$customerId}", 300, function () use ($customerId) {
+    return Order::where('customer_id', $customerId)->get();
+});
 ```
 
 ## Frontend Performance
@@ -152,21 +161,6 @@ processData($largeArray);
 unset($largeArray);
 ```
 
-### Database Memory Management
-```php
-// Use cursor for large datasets
-foreach (Order::cursor() as $order) {
-    // Process each order without loading all into memory
-}
-
-// Use chunkById for ordered processing
-Order::chunkById(100, function ($orders) {
-    foreach ($orders as $order) {
-        // Process orders in batches
-    }
-});
-```
-
 ## Error Handling & Logging
 
 ### Proper Error Handling
@@ -174,19 +168,24 @@ Order::chunkById(100, function ($orders) {
 try {
     $order = $this->orderService->createOrder($data);
 } catch (InsufficientStockException $e) {
-    Log::warning('Insufficient stock for order creation', [
-        'customer_id' => $data['customer_id'],
-        'product_id' => $e->getProductId(),
-        'requested_quantity' => $e->getRequestedQuantity(),
+    Log::error([
+        'message' => $e->getMessage(),
+        'line' => $e->getLine(),
+        'trace' => $e->getTrace(),
+        'timestamp' => now(),
+        'method' => __METHOD__,
     ]);
 
     return back()
         ->withErrors(['stock' => 'Insufficient stock for selected items.'])
         ->withInput();
 } catch (Exception $e) {
-    Log::error('Order creation failed', [
-        'error' => $e->getMessage(),
-        'data' => $data,
+    Log::error([
+        'message' => $e->getMessage(),
+        'line' => $e->getLine(),
+        'trace' => $e->getTrace(),
+        'timestamp' => now(),
+        'method' => __METHOD__,
     ]);
 
     return back()
@@ -231,26 +230,6 @@ Route::middleware('throttle:60,1')->group(function () {
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/orders/bulk', [OrderController::class, 'bulkCreate']);
 });
-```
-
-### Form Rate Limiting
-```php
-// In form request
-class StoreOrderRequest extends FormRequest
-{
-    public function authorize(): bool
-    {
-        return $this->user()->can('create', Order::class);
-    }
-
-    public function rules(): array
-    {
-        return [
-            'customer_id' => 'required|exists:customers,id',
-            'items' => 'required|array|min:1|max:10', // Limit items per order
-        ];
-    }
-}
 ```
 
 ## Monitoring & Debugging

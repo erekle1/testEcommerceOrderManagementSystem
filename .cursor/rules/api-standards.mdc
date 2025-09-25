@@ -1,0 +1,363 @@
+---
+globs: *.php
+---
+
+# API Standards & Response Guidelines
+
+## API Response Format
+
+### Standardized API Responses
+Use methods from [app/Http/Controllers/Controller.php](mdc:app/Http/Controllers/Controller.php) for consistent responses:
+
+```php
+// Success Response
+return response()->json([
+    'success' => true,
+    'message' => $message,
+    'data' => $data,
+    'timestamp' => now()->format('Y-m-d, H:i:s'),
+    'execution_time' => (microtime(true) - START_EXECUTION_TIME) * 1000 . ' ms',
+    'cached' => PROCESS_CACHED
+], Response::HTTP_OK);
+
+// Error Response
+return response()->json([
+    'success' => false,
+    'message' => $message,
+    'errors' => $errors,
+    'timestamp' => now()->format('Y-m-d, H:i:s'),
+    'execution_time' => (microtime(true) - START_EXECUTION_TIME) * 1000 . ' ms',
+    'cached' => PROCESS_CACHED
+], Response::HTTP_UNPROCESSABLE_ENTITY);
+```
+
+### Pagination Response Format
+Every GET endpoint returning a list should be paginated:
+
+```php
+// Pagination Helper Method
+function jsonResponseWithPagination($data, $total)
+{
+    return response()->json([
+        'data' => $data,
+        'total' => $total,
+        'timestamp' => now()->format('Y-m-d, H:i:s'),
+        'execution_time' => (microtime(true) - START_EXECUTION_TIME) * 1000 . ' ms'
+    ]);
+}
+
+// Usage in Controller
+public function index()
+{
+    $orders = Order::with(['customer', 'orderItems'])
+        ->latest()
+        ->paginate(15);
+
+    return $this->jsonResponseWithPagination($orders->items(), $orders->total());
+}
+```
+
+## GET Endpoint Guidelines
+
+### List Endpoint Requirements
+Every list endpoint should include:
+- **Pagination**: All list endpoints must be paginated
+- **Search Capabilities**: Implement search with necessary columns
+- **Status Check**: Add status column to check the status of the model (nullable)
+
+### Search Implementation
+```php
+public function index(Request $request)
+{
+    $query = Order::with(['customer', 'orderItems']);
+
+    // Search functionality
+    if ($request->has('search')) {
+        $searchTerm = $request->get('search');
+        $query->where(function ($q) use ($searchTerm) {
+            $q->where('id', 'like', "%{$searchTerm}%")
+              ->orWhereHas('customer', function ($customerQuery) use ($searchTerm) {
+                  $customerQuery->where('first_name', 'like', "%{$searchTerm}%")
+                                ->orWhere('last_name', 'like', "%{$searchTerm}%")
+                                ->orWhere('email', 'like', "%{$searchTerm}%");
+              });
+        });
+    }
+
+    // Status filtering
+    if ($request->has('status')) {
+        $query->where('status', $request->get('status'));
+    }
+
+    $orders = $query->latest()->paginate(15);
+
+    return $this->jsonResponseWithPagination($orders->items(), $orders->total());
+}
+```
+
+## URL Conventions
+
+### Resource Routes
+Use Route::resource methods for all resource routes:
+
+```php
+// Resource routes
+Route::resource('users', UserController::class);
+Route::resource('orders', OrderController::class);
+Route::resource('products', ProductController::class);
+```
+
+### Kebab Casing
+Use kebab casing for URLs:
+
+```php
+// Kebab case URLs
+Route::get('/user-profile', [UserController::class, 'profile'])->name('user.profile');
+Route::get('/order-items', [OrderItemController::class, 'index'])->name('order-items.index');
+Route::get('/product-categories', [CategoryController::class, 'index'])->name('product-categories.index');
+```
+
+### Named Routes
+Use the name method for all URLs:
+
+```php
+// Named routes
+Route::get('/users/{id}', [UserController::class, 'show'])->name('user.show');
+Route::get('/orders/{id}', [OrderController::class, 'show'])->name('order.show');
+Route::get('/products/{id}', [ProductController::class, 'show'])->name('product.show');
+```
+
+### Main ID Route Convention
+Use `/orders/{id}` instead of `orders?id={id}`:
+
+```php
+// Correct: Path parameters
+Route::get('/orders/{id}', [OrderController::class, 'show']);
+
+// Incorrect: Query parameters for main resource
+Route::get('/orders', [OrderController::class, 'show']); // Don't use query params for main ID
+```
+
+## API Authentication & Authorization
+
+### Authentication Middleware
+```php
+// API routes with authentication
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::apiResource('orders', OrderController::class);
+    Route::apiResource('products', ProductController::class);
+});
+
+// Public API routes
+Route::get('/public/products', [ProductController::class, 'publicIndex']);
+Route::get('/public/products/{id}', [ProductController::class, 'publicShow']);
+```
+
+### Authorization Policies
+```php
+// In Controller
+public function show(Order $order)
+{
+    $this->authorize('view', $order);
+    
+    return response()->json([
+        'success' => true,
+        'data' => $order->load(['customer', 'orderItems.product']),
+        'timestamp' => now()->format('Y-m-d, H:i:s'),
+    ]);
+}
+```
+
+## API Validation
+
+### Form Request Validation
+Use Form Request classes for validating incoming data for every POST/PUT API:
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreOrderRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('create', Order::class);
+    }
+
+    public function rules(): array
+    {
+        return [
+            'customer_id' => 'required|exists:customers,id',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+            'shipping_address' => 'required|string|max:255',
+            'billing_address' => 'required|string|max:255',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'items.required' => 'At least one item is required.',
+            'items.*.quantity.min' => 'Quantity must be at least 1.',
+        ];
+    }
+}
+```
+
+## API Error Handling
+
+### Consistent Error Responses
+```php
+// Validation Error Response
+public function store(StoreOrderRequest $request)
+{
+    try {
+        $data = CreateOrderData::from($request->validated());
+        $order = $this->orderService->createOrder($data);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Order created successfully',
+            'data' => $order,
+            'timestamp' => now()->format('Y-m-d, H:i:s'),
+        ], Response::HTTP_CREATED);
+        
+    } catch (InsufficientStockException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Insufficient stock for some items',
+            'errors' => ['stock' => $e->getMessage()],
+            'timestamp' => now()->format('Y-m-d, H:i:s'),
+        ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        
+    } catch (Exception $e) {
+        Log::error('Order creation failed', [
+            'error' => $e->getMessage(),
+            'data' => $request->all(),
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while creating the order',
+            'timestamp' => now()->format('Y-m-d, H:i:s'),
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
+```
+
+## API Documentation
+
+### Swagger/OpenAPI Documentation
+Use tools like Swagger or Postman to document APIs:
+
+```php
+/**
+ * @OA\Get(
+ *     path="/api/orders",
+ *     summary="Get list of orders",
+ *     tags={"Orders"},
+ *     @OA\Parameter(
+ *         name="page",
+ *         in="query",
+ *         description="Page number",
+ *         required=false,
+ *         @OA\Schema(type="integer")
+ *     ),
+ *     @OA\Parameter(
+ *         name="search",
+ *         in="query",
+ *         description="Search term",
+ *         required=false,
+ *         @OA\Schema(type="string")
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Successful operation",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="success", type="boolean"),
+ *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Order")),
+ *             @OA\Property(property="total", type="integer"),
+ *             @OA\Property(property="timestamp", type="string")
+ *         )
+ *     )
+ * )
+ */
+public function index(Request $request)
+{
+    // Implementation
+}
+```
+
+## Rate Limiting
+
+### API Rate Limiting
+```php
+// In routes/api.php
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    Route::apiResource('orders', OrderController::class);
+});
+
+// Different limits for different endpoints
+Route::middleware(['auth:sanctum', 'throttle:10,1'])->group(function () {
+    Route::post('/orders/bulk', [OrderController::class, 'bulkCreate']);
+    Route::post('/orders/import', [OrderController::class, 'import']);
+});
+```
+
+## API Testing
+
+### API Test Examples
+```php
+<?php
+
+use App\Models\Order;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+it('can get orders via api with pagination', function () {
+    $user = User::factory()->create();
+    $orders = Order::factory()->count(25)->create();
+
+    $response = $this->actingAs($user, 'api')
+        ->getJson('/api/orders?page=1&per_page=10');
+
+    $response->assertStatus(200);
+    $response->assertJsonStructure([
+        'data' => [
+            '*' => [
+                'id',
+                'customer_id',
+                'total_amount',
+                'status',
+                'created_at',
+            ],
+        ],
+        'total',
+        'timestamp',
+    ]);
+    
+    expect($response->json('data'))->toHaveCount(10);
+    expect($response->json('total'))->toBe(25);
+});
+
+it('can search orders via api', function () {
+    $user = User::factory()->create();
+    $customer = Customer::factory()->create(['first_name' => 'John']);
+    $order = Order::factory()->create(['customer_id' => $customer->id]);
+
+    $response = $this->actingAs($user, 'api')
+        ->getJson('/api/orders?search=John');
+
+    $response->assertStatus(200);
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.customer.first_name'))->toBe('John');
+});
+```
