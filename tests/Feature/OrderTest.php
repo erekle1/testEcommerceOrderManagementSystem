@@ -44,9 +44,7 @@ class OrderTest extends TestCase
             ->assertJsonStructure([
                 'success',
                 'message',
-                'data' => [
-                    'order' => ['id', 'total_amount', 'status', 'order_items']
-                ],
+                'data' => ['id', 'total_amount', 'status', 'order_items'],
                 'meta' => ['timestamp', 'version'],
             ]);
 
@@ -72,15 +70,21 @@ class OrderTest extends TestCase
                 'success',
                 'message',
                 'data' => [
-                    'orders' => [
-                        '*' => ['id', 'total_amount', 'status', 'order_items']
-                    ],
-                    'total_count',
+                    '*' => ['id', 'total_amount', 'status', 'order_items']
+                ],
+                'pagination' => [
+                    'current_page',
+                    'per_page',
+                    'total',
+                    'last_page',
+                    'from',
+                    'to',
+                    'has_more_pages',
                 ],
                 'meta' => ['timestamp', 'version'],
             ]);
 
-        $this->assertCount(1, $response->json('data.orders'));
+        $this->assertCount(1, $response->json('data'));
     }
 
     public function test_customer_can_view_specific_order(): void
@@ -96,9 +100,7 @@ class OrderTest extends TestCase
             ->assertJsonStructure([
                 'success',
                 'message',
-                'data' => [
-                    'order' => ['id', 'total_amount', 'status', 'order_items']
-                ],
+                'data' => ['id', 'total_amount', 'status', 'order_items'],
                 'meta' => ['timestamp', 'version'],
             ]);
     }

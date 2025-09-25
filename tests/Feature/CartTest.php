@@ -42,11 +42,16 @@ class CartTest extends TestCase
                 'success',
                 'message',
                 'data' => [
-                    'cart_items' => [
-                        '*' => ['id', 'quantity', 'product']
-                    ],
+                    '*' => ['id', 'quantity', 'product']
+                ],
+                'pagination' => [
+                    'current_page',
+                    'per_page',
                     'total',
-                    'items_count',
+                    'last_page',
+                    'from',
+                    'to',
+                    'has_more_pages',
                 ],
                 'meta' => ['timestamp', 'version'],
             ]);
@@ -69,9 +74,7 @@ class CartTest extends TestCase
             ->assertJsonStructure([
                 'success',
                 'message',
-                'data' => [
-                    'cart_item' => ['id', 'quantity', 'product']
-                ],
+                'data' => ['id', 'quantity', 'product'],
                 'meta' => ['timestamp', 'version'],
             ]);
 
